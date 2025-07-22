@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PPG-BP</string>
+    <string name="start_monitoring">Start</string>
+    <string name="stop_monitoring">Stop</string>
+    <string name="systolic_pressure">SBP: %1$d mmHg</string>
+    <string name="diastolic_pressure">DBP: %1$d mmHg</string>
+    <string name="camera_permission_required">Camera permission required</string>
+    <string name="instruction_text">Place finger over the camera flash for 15 seconds</string>
+    <string name="measuring_text">Measuring... Keep finger steady</string>
+    <string name="result_text">Results</string>
+    <string name="progress_text">Progress: %1$d%%</string>
+    <string name="camera_permission_denied">Camera permission denied</string>
+    <string name="ready_to_measure">Ready to measure</string>
+    <string name="no_finger_detected">No finger detected</string>
+</resources>

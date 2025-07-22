@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#E53935</color>
+    <color name="colorPrimaryDark">#B71C1C</color>
+    <color name="colorAccent">#1E88E5</color>
+    <color name="colorAccentDark">#0D47A1</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="light_gray">#EEEEEE</color>
+    <color name="dark_gray">#616161</color>
+    <color name="text_color">#212121</color>
+    <color name="heart_rate">#E53935</color>
+    <color name="systolic">#E53935</color>
+    <color name="diastolic">#1E88E5</color>
+    <color name="background">#FAFAFA</color>
+</resources> 

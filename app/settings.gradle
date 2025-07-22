@@ -1,0 +1,12 @@
+// settings.gradle
+rootProject.name = "PPGBloodPressureApp"
+include ':app'
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }  // 添加JitPack仓库
+    }
+} 
