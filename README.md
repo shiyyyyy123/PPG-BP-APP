@@ -1,4 +1,4 @@
-# Release Notes
+# README
 
 This project is a **PPG (Photoplethysmography)** signal acquisition and analysis application built for the Android platform. The app uses a smartphone's camera and flashlight to collect PPG signals from the user's fingertip. It offers real-time signal processing and signal quality detection functionalities, making it suitable for research and development in non-invasive physiological parameter monitoring.
 
