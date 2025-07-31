@@ -26,23 +26,20 @@ class BloodPressurePredictor(private val context: Context) {
     
 
     private var spCorrectorSession: OrtSession? = null
-    
-    // 添加特征标准化所需的均值和标准差数组
     private var featureMeans: FloatArray? = null
     private var featureStds: FloatArray? = null
-    
-    // 添加特征名称列表，用于验证
     private var featureNames: List<String>? = null
     
     init {
         try {
 
             loadModels()
-            
-            // 加载特征统计信息
+
+            // Load feature statistics
             loadFeatureStats()
-            
-            // 加载特征名称
+
+
+            // Load feature names
             loadFeatureNames()
             
 
@@ -56,17 +53,17 @@ class BloodPressurePredictor(private val context: Context) {
 
             val spCorrectorFile = File(context.filesDir, "sp_corrector.onnx")
             if (spCorrectorFile.exists()) {
-                Log.d(tag, "加载收缩压修正器模型")
+                Log.d(tag, "Load systolic blood pressure corrector model")
                 spCorrectorSession = ortEnvironment.createSession(spCorrectorFile.absolutePath, sessionOptions)
             }
             
-            Log.d(tag, "模型加载成功")
+            Log.d(tag, " Model loaded successfully")
         } catch (e: Exception) {
-            Log.e(tag, "模型加载失败", e)
+            Log.e(tag, "Model loading failed", e)
         }
     }
-    
-    // 加载特征统计信息（均值和标准差）
+
+    // Load feature statistics (mean and standard deviation)
     private fun loadFeatureStats() {
         try {
             val statsStream = context.assets.open("feature_stats.json")
@@ -84,16 +81,17 @@ class BloodPressurePredictor(private val context: Context) {
                 featureStds!![i] = stdsArray.getDouble(i).toFloat()
             }
             
-            Log.d(tag, "特征统计信息加载成功")
+            Log.d(tag, "Feature statistics loaded successfully")
         } catch (e: Exception) {
-            Log.w(tag, "加载特征统计信息失败，将使用默认标准化: ${e.message}")
-            // 如果加载失败，使用默认值
+            Log.w(tag, "Failed to load feature statistics - default normalization will be applied: ${e.message}")
+            //Fallback to default values if loading fails
             featureMeans = FloatArray(inputDimension) { 0f }
             featureStds = FloatArray(inputDimension) { 1f }
         }
     }
-    
-    // 加载特征名称列表
+
+
+    // Load feature name list
     private fun loadFeatureNames() {
         try {
             val namesStream = context.assets.open("feature_names.json")
@@ -107,9 +105,9 @@ class BloodPressurePredictor(private val context: Context) {
             }
             
             featureNames = names
-            Log.d(tag, "特征名称加载成功，共${names.size}个特征")
+            Log.d(tag, "Feature names loaded successfully, total ${names.size} features")
         } catch (e: Exception) {
-            Log.w(tag, "加载特征名称失败: ${e.message}")
+            Log.w(tag, "Failed to load feature names ${e.message}")
             featureNames = null
         }
     }
@@ -138,14 +136,14 @@ class BloodPressurePredictor(private val context: Context) {
                         input.copyTo(output)
                     }
                 }
-                Log.d(tag, "收缩压修正器模型已复制")
+                Log.d(tag, "Systolic blood pressure corrector model copied")
             } catch (e: Exception) {
-                Log.w(tag, "找不到收缩压修正器模型，跳过: ${e.message}")
+                Log.w(tag, "Systolic blood pressure corrector model not found - skipping correction: ${e.message}")
             }
             
-            Log.d(tag, "模型文件已复制到内部存储")
+            Log.d(tag, "the model file has been copied to internal storage")
         } catch (e: Exception) {
-            Log.e(tag, "复制模型文件失败", e)
+            Log.e(tag, "failed to copy the model file", e)
         }
     }
     
@@ -153,16 +151,15 @@ class BloodPressurePredictor(private val context: Context) {
     fun getInputDimension(): Int {
         return inputDimension
     }
-    
-    // 获取特征名称列表
+
     fun getFeatureNames(): List<String>? {
         return featureNames
     }
     
-    // 标准化特征
+    // Normalize features
     private fun standardizeFeatures(features: FloatArray): FloatArray {
         if (featureMeans == null || featureStds == null) {
-            Log.w(tag, "标准化参数未加载，跳过标准化")
+            Log.w(tag, "Normalization parameters not loaded - skipping normalization")
             return features
         }
         
@@ -179,28 +176,29 @@ class BloodPressurePredictor(private val context: Context) {
         return standardized
     }
     
-    // 验证特征是否有异常值
+    // Check if the features have outliers
     private fun validateFeatures(features: FloatArray): Boolean {
         var isValid = true
         var extremeValueCount = 0
         
         for (i in features.indices) {
-            // 检查是否有极端值
+
+            //Check for extreme values
             if (features[i].isNaN() || features[i].isInfinite()) {
-                features[i] = 0f  // 替换无效值
+                features[i] = 0f
                 isValid = false
                 extremeValueCount++
             }
             
-            // 检查是否有过大或过小的值
+            // Check for values that are too large or too small
             if (features[i] > 100f || features[i] < -100f) {
                 extremeValueCount++
-                // 不替换，只记录
+                // Do not replace, only record.
             }
         }
         
         if (extremeValueCount > 0) {
-            Log.w(tag, "特征中存在${extremeValueCount}个异常值")
+            Log.w(tag, "There are ${extremeValueCount} outlier(s) in the features.")
         }
         
         return isValid
@@ -208,28 +206,27 @@ class BloodPressurePredictor(private val context: Context) {
 
     fun predict(features: FloatArray): Pair<Float, Float> {
         if (ortSession == null) {
-            Log.e(tag, "模型未加载，无法预测")
-            return Pair(120f, 80f) // 返回默认值
+            Log.e(tag, "Model not loaded, prediction cannot be performed.")
+            return Pair(120f, 80f) // Return default value.
         }
         
         try {
-            // 检查输入维度
+
             if (features.size != inputDimension) {
-                Log.w(tag, "输入特征维度不匹配: ${features.size} vs $inputDimension")
-                // 调整维度
+                Log.w(tag, "Input feature dimensions do not match: ${features.size} vs $inputDimension")
                 val adjustedFeatures = FloatArray(inputDimension)
                 for (i in 0 until minOf(features.size, inputDimension)) {
                     adjustedFeatures[i] = features[i]
                 }
                 
-                // 使用调整后的特征
+
                 return predictInternal(adjustedFeatures)
             }
             
             return predictInternal(features)
         } catch (e: Exception) {
-            Log.e(tag, "预测过程中发生错误", e)
-            return Pair(120f, 80f) // 错误时返回默认值
+            Log.e(tag, "An error occurred during the prediction process.", e)
+            return Pair(120f, 80f)
         }
     }
     
@@ -241,13 +238,13 @@ class BloodPressurePredictor(private val context: Context) {
         var correctorOutput: OrtSession.Result? = null
         
         try {
-            // 验证特征
+
             validateFeatures(features)
             
-            // 标准化特征
+
             val standardizedFeatures = standardizeFeatures(features)
             
-            // 记录特征统计信息
+
             logFeatureStats(standardizedFeatures)
 
             val inputName = ortSession!!.inputNames.iterator().next()
@@ -280,11 +277,11 @@ class BloodPressurePredictor(private val context: Context) {
                     val correctedSp = (correctorOutput.get(0).value as Array<FloatArray>)[0][0]
                     
                     systolic = correctedSp
-                    Log.d(tag, "应用了收缩压修正: $systolic")
+                    Log.d(tag, "Systolic blood pressure correction has been applied: $systolic")
                 } catch (e: Exception) {
-                    Log.e(tag, "收缩压修正过程中发生错误", e)
+                    Log.e(tag, "An error occurred during systolic blood pressure correction", e)
                 } finally {
-                    // 释放收缩压修正器资源
+                    // Release systolic blood pressure corrector resources
                     correctorInputTensor?.close()
                     correctorOutput?.close()
                 }
@@ -292,16 +289,17 @@ class BloodPressurePredictor(private val context: Context) {
             
             return Pair(systolic, diastolic)
         } catch (e: Exception) {
-            Log.e(tag, "模型推理失败", e)
+            Log.e(tag, "Model inference failed", e)
             return Pair(120f, 80f)
         } finally {
-            // 确保所有资源都被释放
+
             inputTensor?.close()
             output?.close()
         }
     }
     
-    // 记录特征统计信息，帮助调试
+
+    //Log feature statistics to assist with debugging
     private fun logFeatureStats(features: FloatArray) {
         var min = Float.MAX_VALUE
         var max = Float.MIN_VALUE
@@ -317,40 +315,41 @@ class BloodPressurePredictor(private val context: Context) {
         
         val mean = sum / features.size
         
-        Log.d(tag, "特征统计: 最小值=$min, 最大值=$max, 平均值=$mean, 零值数量=$zeroCount/${features.size}")
+        Log.d(tag, "Feature statistics: min=$min, max=$max, mean=$mean, zero count=$zeroCount/${features.size}")
     }
     
-    // 辅助函数
+
+    //Helper function
     private fun min(first: Int, second: Int): Int {
         return if (first < second) first else second
     }
 
     fun close() {
         try {
-            // 使用安全的关闭方式，确保即使某个资源关闭失败，其他资源仍然能被关闭
+            // Use a safe shutdown approach to ensure that even if one resource fails to close, other resources can still be closed properly.
             try {
                 ortSession?.close()
                 ortSession = null
             } catch (e: Exception) {
-                Log.e(tag, "关闭ortSession时发生错误", e)
+                Log.e(tag, "An error occurred while closing the ortSession.", e)
             }
             
             try {
                 spCorrectorSession?.close()
                 spCorrectorSession = null
             } catch (e: Exception) {
-                Log.e(tag, "关闭spCorrectorSession时发生错误", e)
+                Log.e(tag, "An error occurred while closing the spCorrectorSession.", e)
             }
             
             try {
                 ortEnvironment.close()
             } catch (e: Exception) {
-                Log.e(tag, "关闭ortEnvironment时发生错误", e)
+                Log.e(tag, "An error occurred while closing the ortEnvironment.", e)
             }
             
-            Log.d(tag, "所有ONNX资源已关闭")
+            Log.d(tag, "All ONNX resources have been closed.")
         } catch (e: Exception) {
-            Log.e(tag, "关闭资源时发生错误", e)
+            Log.e(tag, "An error occurred while closing the resources.", e)
         }
     }
 } 
