@@ -26,10 +26,10 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
 
-// 新增特征提取器类
+
 class FeatureExtractor {
     companion object {
-        // 从PPG信号计算一阶导数(VPG)
+        //  Calculating the First Derivative (VPG) from the PPG Signal
         fun calculateVPG(ppg: List<Float>): List<Float> {
             val vpg = mutableListOf<Float>()
             for (i in 1 until ppg.size) {
@@ -38,7 +38,7 @@ class FeatureExtractor {
             return vpg
         }
 
-        // 从VPG信号计算二阶导数(APG)
+        // Compute the second derivative (APG) from the VPG signal.
         fun calculateAPG(vpg: List<Float>): List<Float> {
             val apg = mutableListOf<Float>()
             for (i in 1 until vpg.size) {
@@ -47,7 +47,7 @@ class FeatureExtractor {
             return apg
         }
 
-        // 计算信号的直方图特征
+        // Compute the histogram features of the signal.
         fun calculateHistogramFeatures(signal: List<Float>, numBins: Int = 10): Pair<List<Float>, List<Float>> {
             if (signal.isEmpty()) return Pair(listOf(), listOf())
 
@@ -71,7 +71,7 @@ class FeatureExtractor {
                 }
             }
 
-            // 归一化直方图
+            // Normalize the histogram.
             val totalUp = upHistogram.sum()
             val totalDown = downHistogram.sum()
 
@@ -81,7 +81,7 @@ class FeatureExtractor {
             return Pair(normalizedUp, normalizedDown)
         }
 
-        // 计算邻域最大/最小值特征
+        // Compute the neighborhood maximum/minimum features.
         fun calculateNeighborExtremumFeatures(signal: List<Float>, windowSize: Int = 5): Pair<Float, Float> {
             if (signal.size <= windowSize) return Pair(0f, 0f)
 
@@ -112,11 +112,11 @@ class FeatureExtractor {
             return Pair(maxNeighborMean, minNeighborMean)
         }
 
-        // 检测PPG波形的特征点 (a, b, c, d, e 点)
+        // Detect the characteristic points (a, b, c, d, e) in the PPG waveform.
         fun detectAPGPoints(ppg: List<Float>, vpg: List<Float>, apg: List<Float>): Map<String, Float> {
             val result = mutableMapOf<String, Float>()
 
-            // 寻找收缩期开始点
+            // Find the start point of systole.
             val peaks = mutableListOf<Int>()
             for (i in 2 until ppg.size - 2) {
                 if (ppg[i] > ppg[i - 1] && ppg[i] > ppg[i + 1] &&
@@ -127,7 +127,7 @@ class FeatureExtractor {
 
             if (peaks.isEmpty()) return result
 
-            // 对每个心动周期计算特征点
+            // Compute the characteristic points for each cardiac cycle.
             val points = mutableMapOf<String, MutableList<Float>>()
             val timings = mutableMapOf<String, MutableList<Float>>()
 
@@ -146,10 +146,10 @@ class FeatureExtractor {
                 var dIndex = -1
                 var eIndex = -1
 
-                // a点是VPG的正峰值
+                // Point a is the positive peak of the VPG signal.
                 aPoint = vpg[aIndex]
 
-                // 在a之后查找b点(第一个负极值)
+                // Find point b (the first negative extremum) after point a.
                 for (i in aIndex + 1 until min(aIndex + 20, vpg.size)) {
                     if (i < vpg.size - 1 &&
                         vpg[i] < vpg[i - 1] && vpg[i] < vpg[i + 1]) {
@@ -159,7 +159,7 @@ class FeatureExtractor {
                     }
                 }
 
-                // 在b之后查找c点(第二个正极值)
+                // Find point c (the second positive extremum) after point b.
                 if (bIndex > 0) {
                     for (i in bIndex + 1 until min(bIndex + 20, vpg.size)) {
                         if (i < vpg.size - 1 &&
@@ -171,7 +171,7 @@ class FeatureExtractor {
                     }
                 }
 
-                // 在c之后查找d点(第二个负极值)
+                // Find point d (the second negative extremum) after point c.
                 if (cIndex > 0) {
                     for (i in cIndex + 1 until min(cIndex + 20, vpg.size)) {
                         if (i < vpg.size - 1 &&
@@ -183,7 +183,7 @@ class FeatureExtractor {
                     }
                 }
 
-                // 在d之后查找e点(第三个正极值)
+                // Find point e (the third positive extremum) after point d.
                 if (dIndex > 0) {
                     for (i in dIndex + 1 until min(dIndex + 20, vpg.size)) {
                         if (i < vpg.size - 1 &&
@@ -195,21 +195,21 @@ class FeatureExtractor {
                     }
                 }
 
-                // 保存点值
+                // Save the point values.
                 points.getOrPut("a") { mutableListOf() }.add(aPoint)
                 points.getOrPut("b") { mutableListOf() }.add(bPoint)
                 points.getOrPut("c") { mutableListOf() }.add(cPoint)
                 points.getOrPut("d") { mutableListOf() }.add(dPoint)
                 points.getOrPut("e") { mutableListOf() }.add(ePoint)
 
-                // 保存时间点 (相对于a点的距离)
+                // Save the time points (relative distance from point a).
                 if (bIndex > 0) timings.getOrPut("b") { mutableListOf() }.add((bIndex - aIndex).toFloat())
                 if (cIndex > 0) timings.getOrPut("c") { mutableListOf() }.add((cIndex - aIndex).toFloat())
                 if (dIndex > 0) timings.getOrPut("d") { mutableListOf() }.add((dIndex - aIndex).toFloat())
                 if (eIndex > 0) timings.getOrPut("e") { mutableListOf() }.add((eIndex - aIndex).toFloat())
             }
 
-            // 计算平均值
+            // Compute the average value.
             val apgA = points["a"]?.average()?.toFloat() ?: 0f
             val apgB = points["b"]?.average()?.toFloat() ?: 0f
             val apgC = points["c"]?.average()?.toFloat() ?: 0f
@@ -222,7 +222,7 @@ class FeatureExtractor {
             result["apg_d"] = apgD
             result["apg_e"] = apgE
 
-            // 计算比值特征
+            // Compute the ratio features.
             if (apgA != 0f) {
                 result["ratio_apg_b"] = apgB / apgA
                 result["ratio_apg_c"] = apgC / apgA
@@ -230,7 +230,7 @@ class FeatureExtractor {
                 result["ratio_apg_e"] = apgE / apgA
             }
 
-            // 时间特征
+            // Compute the time-based features.
             val tB = timings["b"]?.average()?.toFloat() ?: 0f
             val tC = timings["c"]?.average()?.toFloat() ?: 0f
             val tD = timings["d"]?.average()?.toFloat() ?: 0f
@@ -241,7 +241,7 @@ class FeatureExtractor {
             result["T_d"] = tD
             result["T_e"] = tE
 
-            // 心动周期平均长度
+            // Compute the average length of cardiac cycles.
             val cycleDuration = if (peaks.size >= 2) {
                 var sum = 0
                 for (i in 1 until peaks.size) {
@@ -252,7 +252,7 @@ class FeatureExtractor {
                 0f
             }
 
-            // 归一化时间特征
+            // Normalize the time-based features.
             if (cycleDuration > 0) {
                 result["T_a_norm"] = 0f
                 result["T_b_norm"] = tB / cycleDuration
@@ -261,15 +261,15 @@ class FeatureExtractor {
                 result["T_e_norm"] = tE / cycleDuration
             }
 
-            // 计算其他特征
+            // Compute other features.
             val peakValues = peaks.map { ppg[it] }
             val avgPeakValue = peakValues.average().toFloat()
 
-            // 波形峰值相对位置特征
+            // Compute the relative position features of waveform peaks.
             for (peakIndex in peaks) {
                 if (peakIndex >= ppg.size - 1) continue
 
-                // 找到峰值后的谷值点
+                // Find the valley points after the peaks.
                 var valleyIndex = -1
                 for (i in peakIndex + 1 until min(peakIndex + 50, ppg.size)) {
                     if (i < ppg.size - 1 &&
@@ -289,7 +289,7 @@ class FeatureExtractor {
                         result["Ts_norm"] = (result["Ts_norm"] ?: 0f) + (ts / cycleDuration)
                     }
 
-                    // 计算收缩期和舒张期面积
+                    // Compute the areas of systole and diastole.
                     val systolicArea = (0 until valleyIndex - peakIndex).sumOf {
                         (ppg[peakIndex + it] - ppg[valleyIndex]).toDouble()
                     }.toFloat()
@@ -302,7 +302,7 @@ class FeatureExtractor {
                 }
             }
 
-            // 平均值处理
+            // Compute the average values for processing.
             val peakCount = peaks.size.toFloat()
             if (peakCount > 0) {
                 result["Ts"] = (result["Ts"] ?: 0f) / peakCount
@@ -311,7 +311,7 @@ class FeatureExtractor {
                 result["AUCsys_norm"] = (result["AUCsys_norm"] ?: 0f) / peakCount
             }
 
-            // 计算血管弹性指数 Augmentation Index (AI)
+            // Compute the Augmentation Index (AI) as a vascular elasticity measure.
             if (result["apg_d"] != null && result["apg_a"] != null && result["apg_a"] != 0f) {
                 result["AI"] = result["apg_d"]!! / result["apg_a"]!!
             }
@@ -319,11 +319,11 @@ class FeatureExtractor {
             return result
         }
 
-        // 提取DSP特征
+        // Extract DSP (Digital Signal Processing) features.
         fun extractTimeFeatures(ppg: List<Float>): Map<String, Float> {
             val result = mutableMapOf<String, Float>()
 
-            // 检测峰值和谷值
+            // Detect peaks and valleys in the signal.
             val peaks = mutableListOf<Int>()
             val valleys = mutableListOf<Int>()
 
@@ -339,7 +339,7 @@ class FeatureExtractor {
 
             if (peaks.isEmpty() || valleys.isEmpty()) return result
 
-            // 收缩时间、舒张时间和总时间
+            // Compute systolic time, diastolic time, and total time.
             var totalSysTime = 0f
             var totalDiaTime = 0f
             var totalSteepest = 0f
@@ -347,14 +347,14 @@ class FeatureExtractor {
             var count = 0
 
             for (peakIndex in peaks) {
-                // 找到这个峰之前的谷
+                // Find the valley before this peak.
                 var prevValley = -1
                 for (v in valleys) {
                     if (v < peakIndex) prevValley = v
                     else break
                 }
 
-                // 找到这个峰之后的谷
+                // Find the valley after this peak.
                 var nextValley = -1
                 for (v in valleys) {
                     if (v > peakIndex) {
@@ -367,17 +367,17 @@ class FeatureExtractor {
                     val sysTime = peakIndex - prevValley
                     val diaTime = nextValley - peakIndex
 
-                    // 计算最陡上升和下降的斜率
+                    // Compute the steepest rising and falling slopes.
                     var maxSlope = Float.MIN_VALUE
                     var minSlope = Float.MAX_VALUE
 
-                    // 上升段斜率
+                    // Compute the slope of the ascending segment.
                     for (i in prevValley until peakIndex) {
                         val slope = ppg[i+1] - ppg[i]
                         if (slope > maxSlope) maxSlope = slope
                     }
 
-                    // 下降段斜率
+                    // Compute the slope of the descending segment.
                     for (i in peakIndex until nextValley) {
                         val slope = ppg[i+1] - ppg[i]
                         if (slope < minSlope) minSlope = slope
@@ -402,7 +402,7 @@ class FeatureExtractor {
                 result["TSystoDiaRise"] = totalSysTime / totalDiaTime
                 result["TdiaToEnd"] = totalDiaTime / count
 
-                // 归一化特征
+                // Normalize the features.
                 result["Ts_norm"] = (totalSysTime / count) / avgCycleDuration
                 result["TNegSteepest_norm"] = (totalNegSteepest / count) / totalSteepest
                 result["TdiaRise_norm"] = (totalDiaTime / count) / avgCycleDuration
@@ -420,15 +420,15 @@ class MainActivity : AppCompatActivity() {
     private var cameraProvider: ProcessCameraProvider? = null
     private var isMonitoring = false
 
-    // 使用固定大小的数组替代无限增长的列表，提高内存效率
-    private val ppgSignalBuffer = FloatArray(1800) // 固定大小的数组
-    private var ppgSignalBufferIndex = 0 // 当前写入位置
-    private var ppgSignalBufferFull = false // 标记缓冲区是否已填满一轮
+
+    private val ppgSignalBuffer = FloatArray(1800)
+    private var ppgSignalBufferIndex = 0
+    private var ppgSignalBufferFull = false
 
     private val displaySignalBuffer = mutableListOf<Entry>()
     private val ppgWindowSize = 1800
     private val displayWindowSize = 200
-    private val requiredSampleLength = 1200
+    private val requiredSampleLength = 450
 
     private lateinit var bpPredictor: BloodPressurePredictor
 
@@ -476,8 +476,8 @@ class MainActivity : AppCompatActivity() {
         binding.diastolicTextView.text = getString(R.string.diastolic_pressure, 0)
         binding.progressTextView.text = getString(R.string.progress_text,0)
 
-        // 添加特征维度信息日志
-        Log.i(TAG, "Application initialized")
+
+        Log.i(TAG, "Application initialization completed")
         Log.i(TAG, "Feature dimension: ${bpPredictor.getInputDimension()}")
         Log.i(TAG, "Model file path: ${this.filesDir}/student_mobile.onnx")
     }
@@ -516,7 +516,7 @@ class MainActivity : AppCompatActivity() {
 
         chart.axisRight.isEnabled = false
 
-        val emptyDataSet = LineDataSet(ArrayList(), "PPG signal")
+        val emptyDataSet = LineDataSet(ArrayList(), "PPG信号")
         emptyDataSet.color = Color.RED
         emptyDataSet.setDrawCircles(false)
         emptyDataSet.setDrawValues(false)
@@ -587,7 +587,7 @@ class MainActivity : AppCompatActivity() {
         lastMean = 0f
         currentMeanValue = 75f
 
-        // 重置缓冲区状态而不是创建新对象
+
         ppgSignalBufferIndex = 0
         ppgSignalBufferFull = false
         displaySignalBuffer.clear()
@@ -634,7 +634,7 @@ class MainActivity : AppCompatActivity() {
                     if (signalStabilityCounter >= requiredStableFrames) {
                         isSignalStable = true
 
-                        // 重置缓冲区状态而不是清空列表
+
                         ppgSignalBufferIndex = 0
                         ppgSignalBufferFull = false
                         displaySignalBuffer.clear()
@@ -642,8 +642,8 @@ class MainActivity : AppCompatActivity() {
                         currentMeanValue = redMean
                         updateYAxisRange()
                         
-                        // 添加日志，表明信号已稳定
-                        Log.d(TAG, "Signal is stable, starting data collection")
+
+                        Log.d(TAG, " Signal is stable, starting data collection")
                     }
                 } else {
                     signalStabilityCounter = 0
@@ -655,13 +655,14 @@ class MainActivity : AppCompatActivity() {
 
             binding.cameraStatusTextView.text = getString(R.string.measuring_text)
 
-            // 使用循环缓冲区模式写入数据
+
+            // Use circular buffer mode to write data
             ppgSignalBuffer[ppgSignalBufferIndex] = redMean
             ppgSignalBufferIndex = (ppgSignalBufferIndex + 1) % ppgWindowSize
             if (ppgSignalBufferIndex == 0) {
                 ppgSignalBufferFull = true
-                // 添加日志，表明缓冲区已填满一轮
-                Log.d(TAG, "Buffer is full")
+
+                Log.d(TAG, "The buffer is filled for one round ")
             }
 
             currentMeanValue = currentMeanValue * (1 - smoothingFactor) + redMean * smoothingFactor
@@ -672,7 +673,7 @@ class MainActivity : AppCompatActivity() {
             updateProgress()
 
             if (getEffectiveBufferSize() >= requiredSampleLength && collectionProgress >= 100) {
-                Log.d(TAG, "Data collection complete, starting blood pressure prediction")
+                Log.d(TAG, "Data collection completed, starting blood pressure prediction")
                 predictBloodPressure()
             }
         } else {
@@ -684,16 +685,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSignalChart() {
-        // 清空显示缓冲区
+
         displaySignalBuffer.clear()
 
-        // 计算要显示的数据起始位置
+
         val effectiveSize = getEffectiveBufferSize()
         val displayCount = min(effectiveSize, displayWindowSize)
 
         if (displayCount > 0) {
             if (ppgSignalBufferFull) {
-                // 缓冲区已满，显示最近的displayCount个样本
+
                 val startIdx = (ppgSignalBufferIndex + ppgWindowSize - displayCount) % ppgWindowSize
                 for (i in 0 until displayCount) {
                     val idx = (startIdx + i) % ppgWindowSize
@@ -701,7 +702,7 @@ class MainActivity : AppCompatActivity() {
                     displaySignalBuffer.add(Entry(x, ppgSignalBuffer[idx]))
                 }
             } else {
-                // 缓冲区未满
+
                 val startIdx = max(0, ppgSignalBufferIndex - displayCount)
                 for (i in 0 until displayCount) {
                     val idx = startIdx + i
@@ -711,7 +712,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val dataSet = LineDataSet(displaySignalBuffer, "PPG signal")
+        val dataSet = LineDataSet(displaySignalBuffer, "PPG Signal")
         dataSet.color = Color.RED
         dataSet.setDrawCircles(false)
         dataSet.setDrawValues(false)
@@ -732,42 +733,44 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun predictBloodPressure() {
-        // 检查是否有足够的数据
+        // Check if there is enough data
         if (getEffectiveBufferSize() < requiredSampleLength) {
-            Log.w(TAG, "Data insufficient: ${getEffectiveBufferSize()} < $requiredSampleLength")
+            Log.w(TAG, "Insufficient data: ${getEffectiveBufferSize()} < $requiredSampleLength")
             return
         }
 
         try {
-            // 获取有效的缓冲区数据
+            // Get valid buffer data
             val effectiveData = getEffectiveBufferData()
             Log.d(TAG, "Effective data length: ${effectiveData.size}")
 
-            // 确保信号处理过程中的任何错误都不会导致应用崩溃
+            // Ensure that any errors during signal processing do not cause the app to crash
             val features = extractFeatures(effectiveData)
-            Log.d(TAG, "Feature extraction complete: number of features=${features.size}")
+            Log.d(TAG, "Feature extraction completed: Number of features=${features.size}")
 
             val (systolic, diastolic) = bpPredictor.predict(features)
             Log.d(TAG, "Model prediction result: Systolic=$systolic, Diastolic=$diastolic")
 
-            // 检查预测结果是否有效（非零值）
+            // Check if the prediction result is valid (non-zero values)
             if (systolic <= 0 || diastolic <= 0) {
                 Log.w(TAG, "Invalid prediction result: Systolic=$systolic, Diastolic=$diastolic")
-                // 不更新UI，继续收集数据
+                // Do not update UI, continue collecting data
                 return
             }
 
             runOnUiThread {
                 binding.systolicTextView.text = getString(R.string.systolic_pressure, systolic.toInt())
                 binding.diastolicTextView.text = getString(R.string.diastolic_pressure, diastolic.toInt())
-                Log.d(TAG, "UI updated: Systolic=${systolic.toInt()}, Diastolic=${diastolic.toInt()}")
-                
-                // 只有在获得有效结果时才锁定结果
+                Log.d(TAG, "UI update completed: Systolic=${systolic.toInt()}, Diastolic=${diastolic.toInt()}")
+
+
+                // Only lock the result when a valid result is obtained
                 lockResult()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error during blood pressure prediction: ${e.message}", e)
-            // 使用默认值以防止应用崩溃
+            Log.e(TAG, "Error occurred during blood pressure prediction: ${e.message}", e)
+
+            // Use default values to prevent the app from crashing
             runOnUiThread {
                 binding.systolicTextView.text = getString(R.string.systolic_pressure, 120)
                 binding.diastolicTextView.text = getString(R.string.diastolic_pressure, 80)
@@ -779,57 +782,60 @@ class MainActivity : AppCompatActivity() {
     private fun extractFeatures(signal: List<Float>): FloatArray {
         Log.d(TAG, "Starting feature extraction, signal length: ${signal.size}")
 
-        // 获取特征名称列表，用于验证
+
+        // Get the list of feature names for validation
         val featureNames = bpPredictor.getFeatureNames()
 
-        // 创建最终特征数组
+
+        // Create the final feature array
         val features = FloatArray(bpPredictor.getInputDimension())
 
         try {
-            // 1. 预处理信号 - 确保长度足够
+            // 1. Preprocess the signal - Ensure sufficient length
             if (signal.size < requiredSampleLength) {
-                Log.w(TAG, "Signal length insufficient, cannot extract features")
+                Log.w(TAG, "Signal length is insufficient, cannot extract features")
                 return features
             }
 
-            // 使用适当的窗口提取最新的信号数据
+            // Use an appropriate window to extract the latest signal data
             val processedSignal = signal.takeLast(requiredSampleLength)
 
-            // 2. 计算一阶导数 (VPG) 和二阶导数 (APG)
+            // 2. Calculate the first derivative (VPG) and second derivative (APG)
             val vpg = FeatureExtractor.calculateVPG(processedSignal)
             val apg = FeatureExtractor.calculateAPG(vpg)
 
-            // 3. 计算直方图特征
+            // 3. Calculate histogram features
             val (ppgHistUp, ppgHistDown) = FeatureExtractor.calculateHistogramFeatures(processedSignal, 10)
             val (vpgHistUp, vpgHistDown) = FeatureExtractor.calculateHistogramFeatures(vpg, 10)
             val (apgHistUp, apgHistDown) = FeatureExtractor.calculateHistogramFeatures(apg, 10)
 
-            // 4. 计算邻域最大/最小值特征
+            // 4. Calculate neighborhood maximum/minimum features
             val (ppgMaxNeighborMean, ppgMinNeighborMean) = FeatureExtractor.calculateNeighborExtremumFeatures(processedSignal)
             val (vpgMaxNeighborMean, vpgMinNeighborMean) = FeatureExtractor.calculateNeighborExtremumFeatures(vpg)
             val (apgMaxNeighborMean, apgMinNeighborMean) = FeatureExtractor.calculateNeighborExtremumFeatures(apg)
 
-            // 5. 检测APG特征点
+            // 5. Detect APG feature points
             val apgPoints = FeatureExtractor.detectAPGPoints(processedSignal, vpg, apg)
 
-            // 6. 提取时间域特征
+            // 6. Extract time-domain features
             val timeFeatures = FeatureExtractor.extractTimeFeatures(processedSignal)
 
-            // 7. 计算其他统计特征
+            // 7. Calculate additional statistical features
             val ppgMean = processedSignal.average().toFloat()
             val ppgStd = sqrt(processedSignal.map { (it - ppgMean) * (it - ppgMean) }.average().toFloat())
             val ppgMax = processedSignal.maxOrNull() ?: 0f
             val ppgMin = processedSignal.minOrNull() ?: 0f
 
-            // 计算信号质量指标
+            // Calculate signal quality metrics
             val skewness = calculateSkewness(processedSignal, ppgMean, ppgStd)
             val kurtosis = calculateKurtosis(processedSignal, ppgMean, ppgStd)
 
-            // 从CSV特征列表中填充特征数组
-            // 创建特征映射表
+            // Fill the feature array from the CSV feature list
+            // Create a feature mapping table
             val featureMap = mutableMapOf<String, Float>()
 
-            // 添加PPG/VPG/APG统计特征
+
+            // Add PPG/VPG/APG statistical features
             featureMap["ppg3_max_0"] = ppgMax
             featureMap["ppg4_max_0"] = ppgMax
             featureMap["vpg_min_0"] = vpgMinNeighborMean
@@ -838,7 +844,8 @@ class MainActivity : AppCompatActivity() {
             featureMap["vpg_max_0"] = vpgMaxNeighborMean
             featureMap["apg_min_0"] = apgMinNeighborMean
 
-            // 添加直方图特征
+
+            // Add histogram features
             for (i in 0 until min(ppgHistDown.size, 10)) {
                 featureMap["ppg_histogram_down_$i"] = ppgHistDown[i]
                 featureMap["ppg3_histogram_down_$i"] = ppgHistDown[i]
@@ -867,7 +874,7 @@ class MainActivity : AppCompatActivity() {
                 featureMap["apg_histogram_up_$i"] = apgHistUp[i]
             }
 
-            // 添加邻域特征
+            // Add neighborhood features
             featureMap["ppg_max_neighbor_mean_0"] = ppgMaxNeighborMean
             featureMap["ppg3_max_neighbor_mean_0"] = ppgMaxNeighborMean
             featureMap["ppg4_max_neighbor_mean_0"] = ppgMaxNeighborMean
@@ -875,33 +882,37 @@ class MainActivity : AppCompatActivity() {
             featureMap["apg_max_neighbor_mean_0"] = apgMaxNeighborMean
             featureMap["vpg_max_neighbor_mean_0"] = vpgMaxNeighborMean
 
-            // 添加DSDC/USDC特征 (区别信号相关性特征)
-            // 使用与DL项目一致的计算方法
+
+            // Add DSDC/USDC features (Differential Signal Dependency Correlation features)
+
             val dsdcFeatures = calculateDSDCFeatures(processedSignal, vpg, apg)
             for ((key, value) in dsdcFeatures) {
                 featureMap[key] = value
             }
 
-            // 添加usdc特征
+            // Add USDC features
             val usdcFeatures = calculateUSDCFeatures(processedSignal, vpg, apg)
             for ((key, value) in usdcFeatures) {
                 featureMap[key] = value
             }
 
-            // 添加循环匹配特征
+
+            // Add cyclic matching features
             featureMap["ppg_mean_cycles_match_peak_59"] = ppgMean
 
-            // 添加APG点特征和时间特征
+
+            // Add APG point features and time-domain features
             for ((key, value) in apgPoints) {
                 featureMap[key] = value
             }
 
-            // 添加时间域特征
+            // Add time-domain features
             for ((key, value) in timeFeatures) {
                 featureMap[key] = value
             }
 
-            // 计算波形区域特征
+
+            // Calculate waveform region features
             val sw25 = timeFeatures["Td"] ?: 0f
             val dw50 = timeFeatures["TdiaRise"] ?: 0f
             val dw75 = timeFeatures["TdiaToEnd"] ?: 0f
@@ -910,30 +921,34 @@ class MainActivity : AppCompatActivity() {
             featureMap["SW50"] = sw25 * 2
             featureMap["SW75"] = sw25 * 3
             featureMap["DW50"] = dw50
-            featureMap["DW75_norm"] = dw75 / (sw25 * 3).coerceAtLeast(0.1f)  // 防止除零
-            featureMap["DW50_norm"] = dw50 / (sw25 * 2).coerceAtLeast(0.1f)  // 防止除零
-            featureMap["DWdivSW25"] = dw50 / sw25.coerceAtLeast(0.1f)  // 防止除零
-            featureMap["DWdivSW50"] = dw50 / (sw25 * 2).coerceAtLeast(0.1f)  // 防止除零
-            featureMap["DWdivSW75"] = dw75 / (sw25 * 3).coerceAtLeast(0.1f)  // 防止除零
+            featureMap["DW75_norm"] = dw75 / (sw25 * 3).coerceAtLeast(0.1f)
+            featureMap["DW50_norm"] = dw50 / (sw25 * 2).coerceAtLeast(0.1f)
+            featureMap["DWdivSW25"] = dw50 / sw25.coerceAtLeast(0.1f)
+            featureMap["DWdivSW50"] = dw50 / (sw25 * 2).coerceAtLeast(0.1f)
+            featureMap["DWdivSW75"] = dw75 / (sw25 * 3).coerceAtLeast(0.1f)  // Prevent division by zero
             featureMap["SWaddDW75"] = (sw25 * 3) + dw75
 
-            // 计算质量指标
+
+            // Calculate quality metrics
             featureMap["SQI_skew"] = skewness
             featureMap["SQI_kurtosis"] = kurtosis
 
-            // 添加bcda和sdoo特征
+
+            // Add BCDA and SDOO features
             featureMap["bcda"] = (apgPoints["apg_b"] ?: 0f) + (apgPoints["apg_c"] ?: 0f) +
                     (apgPoints["apg_d"] ?: 0f) + (apgPoints["apg_a"] ?: 0f)
             featureMap["sdoo"] = (apgPoints["T_d"] ?: 0f) * (apgPoints["apg_d"] ?: 0f)
 
-            // 计算S3, S4等特征
+
+            // Calculate S3, S4, and other features
             featureMap["S3_norm"] = timeFeatures["Ts_norm"] ?: 0f
             featureMap["S4"] = timeFeatures["TNegSteepest"] ?: 0f
 
-            // 计算Ratio特征
+            // Calculate Ratio features
             featureMap["Ratio"] = timeFeatures["TSystoDiaRise"] ?: 0f
 
-            // 定义T_peak相关特征
+
+            // Define T_peak-related features
             featureMap["T_peak_a"] = apgPoints["T_a"] ?: 0f
             featureMap["T_peak_b"] = apgPoints["T_b"] ?: 0f
             featureMap["T_peak_c"] = apgPoints["T_c"] ?: 0f
@@ -946,22 +961,26 @@ class MainActivity : AppCompatActivity() {
             featureMap["T_peak_d_norm"] = apgPoints["T_d_norm"] ?: 0f
             featureMap["T_peak_e_norm"] = apgPoints["T_e_norm"] ?: 0f
 
-            // 定义AI特征
+
+            // Define AI features
             featureMap["AI"] = apgPoints["AI"] ?: 0f
 
-            // 添加Tc特征（与T_c相同）
+
+            // Add Tc feature (same as T_c)
             featureMap["Tc"] = apgPoints["T_c"] ?: 0f
 
-            // 从featureMap填充特征数组
-            // 使用特征名称列表确保顺序一致
+
+            // Fill the feature array from featureMap
+            // Use the feature name list to ensure consistent ordering
             if (featureNames != null && featureNames.size == features.size) {
                 for (i in featureNames.indices) {
                     val featureName = featureNames[i]
                     features[i] = featureMap[featureName] ?: 0f
                 }
-                Log.d(TAG, "Filled feature array using predefined feature order")
+                Log.d(TAG, "Fill the feature array using the predefined feature order")
             } else {
-                // 如果没有特征名称列表，使用固定顺序
+
+                // If there is no feature name list, use a fixed order
                 val featureOrder = listOf(
                     "ppg3_histogram_down_8", "TNegSteepest_norm", "AUCsys_norm", "ppg_histogram_down_2",
                     "T_peak_e", "S3_norm", "T_peak_c_norm", "T_peak_b_norm", "ppg_mean_cycles_match_peak_59",
@@ -985,7 +1004,8 @@ class MainActivity : AppCompatActivity() {
                     "apg_d", "DW50_norm", "vpg_histogram_up_0", "bcda", "AI"
                 )
 
-                // 填充特征数组，如果某个特征不存在则使用0
+
+                // Fill the feature array, using 0 if a feature is missing
                 var missingFeatures = 0
                 for (i in 0 until min(featureOrder.size, features.size)) {
                     val feature = featureMap[featureOrder[i]]
@@ -998,15 +1018,14 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 if (missingFeatures > 0) {
-                    Log.w(TAG, "Missing $missingFeatures features, filled with 0")
+                    Log.w(TAG, "Missing ${missingFeatures} features, filled with 0")
                 }
             }
 
-            Log.d(TAG, "Feature extraction complete, total $features.size features")
+            Log.d(TAG, " Feature extraction completed, total of ${features.size} features")
 
         } catch (e: Exception) {
             Log.e(TAG, "Feature extraction failed: ${e.message}", e)
-            // 确保返回零填充的特征数组，不会导致应用崩溃
             for (i in features.indices) {
                 features[i] = 0f
             }
@@ -1015,7 +1034,7 @@ class MainActivity : AppCompatActivity() {
         return features
     }
 
-    // 计算偏度
+    // Calculate Skewness
     private fun calculateSkewness(signal: List<Float>, mean: Float, stdDev: Float): Float {
         if (signal.size < 3 || stdDev == 0f) return 0f
 
@@ -1027,7 +1046,7 @@ class MainActivity : AppCompatActivity() {
         return sum / (signal.size - 1)
     }
 
-    // 计算峰度
+    // calculate Kurtosis
     private fun calculateKurtosis(signal: List<Float>, mean: Float, stdDev: Float): Float {
         if (signal.size < 4 || stdDev == 0f) return 0f
 
@@ -1036,32 +1055,32 @@ class MainActivity : AppCompatActivity() {
             sum += ((value - mean) / stdDev).pow(4)
         }
 
-        return sum / (signal.size - 1) - 3f  // 减去3使正态分布的峰度为0
+        return sum / (signal.size - 1) - 3f
     }
 
-    // 计算DSDC特征 - 与DL项目保持一致
+    // calculate DSDC Features
     private fun calculateDSDCFeatures(ppg: List<Float>, vpg: List<Float>, apg: List<Float>): Map<String, Float> {
         val result = mutableMapOf<String, Float>()
 
-        // 计算PPG信号的统计特征
+        // PPG
         val ppgMean = ppg.average().toFloat()
         val ppgStd = sqrt(ppg.map { (it - ppgMean) * (it - ppgMean) }.average().toFloat())
         val ppgMax = ppg.maxOrNull() ?: 0f
         val ppgMin = ppg.minOrNull() ?: 0f
 
-        // 计算VPG信号的统计特征
+        // VPG
         val vpgMean = vpg.average().toFloat()
         val vpgStd = sqrt(vpg.map { (it - vpgMean) * (it - vpgMean) }.average().toFloat())
         val vpgMax = vpg.maxOrNull() ?: 0f
         val vpgMin = vpg.minOrNull() ?: 0f
 
-        // 计算APG信号的统计特征
+        // APG
         val apgMean = apg.average().toFloat()
         val apgStd = sqrt(apg.map { (it - apgMean) * (it - apgMean) }.average().toFloat())
         val apgMax = apg.maxOrNull() ?: 0f
         val apgMin = apg.minOrNull() ?: 0f
 
-        // 填充DSDC特征
+        // DSDC
         result["dsdc_0"] = ppgMean
         result["dsdc_1"] = ppgStd
         result["dsdc_2"] = ppgMax
@@ -1078,7 +1097,7 @@ class MainActivity : AppCompatActivity() {
         result["dsdc_13"] = apgMin
         result["dsdc_14"] = apgMax - apgMin
 
-        // 计算信号之间的相关性
+
         val ppgVpgCorr = calculateCorrelation(ppg.take(vpg.size), vpg)
         val ppgApgCorr = calculateCorrelation(ppg.take(apg.size), apg)
         val vpgApgCorr = calculateCorrelation(vpg.take(apg.size), apg)
@@ -1090,11 +1109,12 @@ class MainActivity : AppCompatActivity() {
         return result
     }
 
-    // 计算USDC特征 - 与DL项目保持一致
+    // calculate USDC Features
     private fun calculateUSDCFeatures(ppg: List<Float>, vpg: List<Float>, apg: List<Float>): Map<String, Float> {
         val result = mutableMapOf<String, Float>()
 
-        // 使用与DL项目一致的计算方法
+
+    // Use the calculation method consistent with the DL project
         val (ppgMaxNeighborMean, ppgMinNeighborMean) = FeatureExtractor.calculateNeighborExtremumFeatures(ppg)
         val (vpgMaxNeighborMean, vpgMinNeighborMean) = FeatureExtractor.calculateNeighborExtremumFeatures(vpg)
         val (apgMaxNeighborMean, apgMinNeighborMean) = FeatureExtractor.calculateNeighborExtremumFeatures(apg)
@@ -1109,7 +1129,7 @@ class MainActivity : AppCompatActivity() {
         return result
     }
 
-    // 计算两个信号之间的相关性
+    // calculate Correlation
     private fun calculateCorrelation(signal1: List<Float>, signal2: List<Float>): Float {
         if (signal1.size != signal2.size || signal1.isEmpty()) return 0f
 
@@ -1146,9 +1166,9 @@ class MainActivity : AppCompatActivity() {
             lockedSystolic = systolicMatch?.value?.toInt() ?: 0
             lockedDiastolic = diastolicMatch?.value?.toInt() ?: 0
 
-            Log.d(TAG, "Blood pressure values locked: Systolic=$lockedSystolic, Diastolic=$lockedDiastolic")
+            Log.d(TAG, "Locked blood pressure values: Systolic=$lockedSystolic,  diastolic =$lockedDiastolic")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to extract blood pressure values", e)
+            Log.e(TAG, " Failed to extract blood pressure values", e)
             lockedSystolic = 0
             lockedDiastolic = 0
         }
@@ -1182,10 +1202,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 添加生命周期管理方法
+
     override fun onPause() {
         super.onPause()
-        // 暂停时停止监测并释放相机资源
         if (isMonitoring) {
             stopMonitoring()
         }
@@ -1194,13 +1213,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // 恢复时重新设置相机
         if (allPermissionsGranted() && camera == null) {
             setupCamera()
         }
     }
 
-    // 释放相机资源
+
     private fun releaseCamera() {
         try {
             camera?.cameraControl?.enableTorch(false)
@@ -1213,7 +1231,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // 确保在Activity销毁时释放所有资源
         releaseCamera()
         cameraExecutor.shutdown()
         try {
@@ -1223,24 +1240,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 获取有效的缓冲区大小
+
     private fun getEffectiveBufferSize(): Int {
         return if (ppgSignalBufferFull) ppgWindowSize else ppgSignalBufferIndex
     }
     
-    // 获取缓冲区中的有效数据作为列表
+
     private fun getEffectiveBufferData(): List<Float> {
         val result = ArrayList<Float>(requiredSampleLength)
         
         if (ppgSignalBufferFull) {
-            // 缓冲区已满，获取最近的requiredSampleLength个样本
             val startIdx = (ppgSignalBufferIndex + ppgWindowSize - requiredSampleLength) % ppgWindowSize
             for (i in 0 until requiredSampleLength) {
                 val idx = (startIdx + i) % ppgWindowSize
                 result.add(ppgSignalBuffer[idx])
             }
         } else if (ppgSignalBufferIndex >= requiredSampleLength) {
-            // 缓冲区未满但数据足够
             for (i in ppgSignalBufferIndex - requiredSampleLength until ppgSignalBufferIndex) {
                 result.add(ppgSignalBuffer[i])
             }
