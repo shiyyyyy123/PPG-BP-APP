@@ -1,11 +1,11 @@
+# student_model.py - MobileNetV3实现
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
 class SqueezeExcite(nn.Module):
-    """Simplified Squeeze-and-Excitation block for fully connected layers"""
-
+    """挤压激励模块(SE模块) - 简化版本，适用于全连接层"""
     def __init__(self, in_channels, reduction=4):
         super().__init__()
         squeeze_channels = max(1, in_channels // reduction)
@@ -14,130 +14,122 @@ class SqueezeExcite(nn.Module):
         self.in_channels = in_channels
 
     def forward(self, x):
-        """Forward pass with channel-wise attention mechanism
-
-        Args:
-            x: Input tensor of shape [batch_size, channels]
-
-        Returns:
-            Output tensor with channel-wise attention weights applied
-        """
-        # Simplified SE implementation for FC layers
-        scale_fc = self.fc1(x)  # Process entire input for attention
+        # 适用于全连接层的SE块实现
+        # 输入x的形状为[batch_size, channels]
+        
+        # 全局信息： 每个通道的平均值
+        scale = torch.mean(x, dim=1, keepdim=True).expand_as(x)
+        
+        # 对全局信息进行压缩和激励
+        # 首先将scale调整为[batch_size, in_channels]以匹配fc1的输入要求
+        scale_fc = self.fc1(x)  # 直接使用x作为输入，而不是scale
         scale_fc = F.relu(scale_fc)
         scale_fc = self.fc2(scale_fc)
         scale_fc = torch.sigmoid(scale_fc)
-
-        return x * scale_fc  # Apply channel attention weights
+        
+        # 应用通道注意力
+        return x * scale_fc
 
 
 class InvertedResidual(nn.Module):
-    """MobileNetV3-style inverted residual block adapted for FC layers"""
-
+    """MobileNetV3的倒置残差块"""
     def __init__(self, inp, hidden_dim, oup, kernel_size, stride, use_se, use_hs):
         super().__init__()
         self.identity = stride == 1 and inp == oup
 
-        # Activation selection
+        # 线性激活或h-swish激活
         act = nn.Hardswish if use_hs else nn.ReLU
 
-        # SE module configuration
+        # 为SE块创建更简单、更鲁棒的实现
         se_module = SqueezeExcite(hidden_dim) if use_se else nn.Identity()
 
         self.conv = nn.Sequential(
-            # Expansion layer
+            # 扩展层
             nn.Linear(inp, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
             act(),
-
-            # Channel attention
+            # SE层
             se_module,
-
-            # Projection layer
+            # 输出层
             nn.Linear(hidden_dim, oup),
             nn.BatchNorm1d(oup),
         )
 
     def forward(self, x):
-        """Forward pass with optional residual connection"""
         if self.identity:
             return x + self.conv(x)
-        return self.conv(x)
+        else:
+            return self.conv(x)
 
 
 class MobileBPStudent(nn.Module):
-    """Lightweight student model based on MobileNetV3 architecture for blood pressure estimation
-
-    Key Features:
-    - Adapted MobileNetV3 architecture for fully connected layers
-    - Simplified Squeeze-and-Excitation blocks
-    - Feature extraction points for knowledge distillation
-    - Compatible feature dimensions with teacher model
-    """
-
+    """基于MobileNetV3-Small的学生模型"""
     def __init__(self, config):
         super().__init__()
-
-        # Network configuration
+        
+        # 特征维度配置
         input_dim = config.input_dim
-        last_channel = 768  # Maintains compatibility with teacher features
-
-        # Initial feature extraction
+        last_channel = 768  # 保持特征维度与教师兼容
+        
+        # 初始特征提取
         self.features = nn.Sequential(
-            nn.Linear(input_dim, 16),
+            nn.Linear(input_dim, 16),  
             nn.BatchNorm1d(16),
             nn.Hardswish()
         )
-
-        # MobileNetV3 architecture parameters adapted for FC layers
-        # [expansion, output_channels, use_se, use_hs, stride]
+        
+        # MobileNetV3 架构参数 - 适配全连接层情况
+        # [扩展率, 输出通道, 使用SE, 使用HS, 步长]
         self.cfg = [
-            [3, 16, 16, True, False, 2],  # Block 0
-            [3, 72, 24, False, False, 2],  # Block 1
-            [3, 88, 24, False, False, 1],  # Block 2
-            [5, 96, 40, True, True, 2],  # Block 3
-            [5, 240, 40, True, True, 1],  # Block 4
-            [5, 240, 40, True, True, 1],  # Block 5
-            [5, 120, 48, True, True, 1],  # Block 6
-            [5, 144, 48, True, True, 1],  # Block 7
-            [5, 288, 96, True, True, 2],  # Block 8
-            [5, 576, 96, True, True, 1],  # Block 9
-            [5, 576, 96, True, True, 1],  # Block 10
+            # k, t, c, SE, HS, s 
+            [3,  16,  16,  True,  False, 2],
+            [3,  72,  24,  False, False, 2],
+            [3,  88,  24,  False, False, 1],
+            [5,  96,  40,  True,  True,  2],
+            [5, 240,  40,  True,  True,  1],
+            [5, 240,  40,  True,  True,  1],
+            [5, 120,  48,  True,  True,  1],
+            [5, 144,  48,  True,  True,  1],
+            [5, 288,  96,  True,  True,  2],
+            [5, 576,  96,  True,  True,  1],
+            [5, 576,  96,  True,  True,  1],
         ]
-
-        # Build backbone network
+        
+        # 构建主干网络
         input_channel = 16
         self.blocks = nn.ModuleList()
-
+        
+        # 创建MobileNetV3层
         for k, t, c, use_se, use_hs, s in self.cfg:
+            exp_size = t
+            output_channel = c
             self.blocks.append(
                 InvertedResidual(
-                    input_channel,
-                    t,  # Expansion size
-                    c,  # Output channels
-                    k,  # Kernel size (unused in FC)
-                    s,  # Stride
-                    use_se,
+                    input_channel, 
+                    exp_size, 
+                    output_channel, 
+                    k, s, 
+                    use_se, 
                     use_hs
                 )
             )
-            input_channel = c
-
-        # Final feature processing
+            input_channel = output_channel
+        
+        # 最后特征提取层
         self.conv = nn.Sequential(
             nn.Linear(input_channel, last_channel),
             nn.BatchNorm1d(last_channel),
             nn.Hardswish()
         )
-
-        # Feature adapter for teacher compatibility
+        
+        # 特征降维以保持与教师模型兼容的特征维度
         self.feature_adapter = nn.Sequential(
             nn.Linear(last_channel, 1024),
             nn.BatchNorm1d(1024),
             nn.Hardswish()
         )
-
-        # Output layers
+        
+        # 输出层
         self.output = nn.Sequential(
             nn.Linear(1024, 512),
             nn.Hardswish(),
@@ -146,45 +138,37 @@ class MobileBPStudent(nn.Module):
         )
 
     def extract_features(self, x):
-        """Feature extraction with distillation points
-
-        Args:
-            x: Input tensor [batch_size, input_dim]
-
-        Returns:
-            tuple: (main_features, list_of_distillation_features)
-        """
         x = self.features(x)
-
-        # Initialize feature collection for distillation
-        distill_features = [x]  # Initial features
-
-        # Strategic points for feature collection
-        feature_indices = [3, 7, 10]  # Key blocks for distillation
-
+        
+        # 收集中间特征用于蒸馏
+        distill_features = []
+        
+        # 保存feature1 - 初始特征
+        distill_features.append(x)
+        
+        # 特定点收集特征
+        feature_indices = [3, 7, 10]  # 根据模型结构选择关键点
         for i, block in enumerate(self.blocks):
-            x = block(x)
-            if i in feature_indices:
-                distill_features.append(x)
-
-        # Final processing
+            try:
+                x = block(x)
+                if i in feature_indices:
+                    distill_features.append(x)
+            except Exception as e:
+                print(f"Block {i} 处理失败: {e}")
+                print(f"输入形状: {x.shape}")
+                raise
+        
+        # 最终特征
         x = self.conv(x)
         distill_features.append(x)
-
-        # Feature adaptation
+        
+        # 适配器转换
         x = self.feature_adapter(x)
         distill_features.append(x)
-
+        
         return x, distill_features
 
     def forward(self, x):
-        """Forward pass with feature extraction
-
-        Args:
-            x: Input tensor [batch_size, input_dim]
-
-        Returns:
-            tuple: (predictions, list_of_features_for_distillation)
-        """
         x, features = self.extract_features(x)
         return self.output(x), features
+

@@ -46,9 +46,9 @@ class WeightedHuberLoss(nn.Module):
 def train_teacher():
     config = Config()
 
-    # 加载预处理数据 - 使用增强的训练集
-    X_train = np.load("data/processed/X_train.npy")  # 改为增强数据
-    y_train = np.load("data/processed/y_train.npy")  # 改为增强数据
+    # 加载预处理数据 - 使用未增强的训练集
+    X_train = np.load("data/processed/X_train_no_aug.npy")  # 改为未增强数据
+    y_train = np.load("data/processed/y_train_no_aug.npy")  # 改为未增强数据
     X_val = np.load("data/processed/X_val.npy")  # 使用验证集
     y_val = np.load("data/processed/y_val.npy")  # 使用验证集
 
@@ -59,7 +59,7 @@ def train_teacher():
     # 配置输入维度
     config.input_dim = X_train.shape[1]
     print("当前输入维度:", config.input_dim)
-    print("使用增强训练集进行教师模型训练（用于消融实验）")
+    print("使用未增强训练集进行教师模型训练（用于消融实验）")
     print(f"训练集大小: {X_train.shape}")
     
     # 创建数据加载器
@@ -161,8 +161,8 @@ def train_teacher():
         if val_mae < best_mae:
             best_mae = val_mae
             with ema.average_parameters():
-                torch.save(model.state_dict(), f"models/teacher_aug_best-epochs={config.epochs}-batch_size={config.batch_size}-lr={config.max_lr}-huber_delta={config.huber_delta}-sp_weight={config.sp_weight}.pth")
-            print("==> New best model saved with EMA parameters! (Augmentation)")
+                torch.save(model.state_dict(), f"models/teacher_no_aug_best-epochs={config.epochs}-batch_size={config.batch_size}-lr={config.max_lr}-huber_delta={config.huber_delta}-sp_weight={config.sp_weight}.pth")
+            print("==> New best model saved with EMA parameters! (No Augmentation)")
         
         # 绘制训练曲线 - 参考蒸馏代码风格
         try:
@@ -173,7 +173,7 @@ def train_teacher():
             plt.plot(epochs_range, val_mae_list, 'r-', label='Val MAE', linewidth=2, marker='s', markersize=2)
             plt.xlabel('Epoch')
             plt.ylabel('MAE (mmHg)')
-            plt.title('Teacher Model Training - MAE Comparison (Augmentation)')
+            plt.title('Teacher Model Training - MAE Comparison (No Augmentation)')
             plt.legend()
             plt.grid(True, alpha=0.3)
             
@@ -190,7 +190,7 @@ def train_teacher():
                 except Exception as e:
                     print(f"标注添加失败: {e}")
             
-            plt.savefig(f'models/teacher_aug_training_mae-epochs={config.epochs}-batch_size={config.batch_size}-lr={config.max_lr}-huber_delta={config.huber_delta}-sp_weight={config.sp_weight}.png', 
+            plt.savefig(f'models/teacher_no_aug_training_mae-epochs={config.epochs}-batch_size={config.batch_size}-lr={config.max_lr}-huber_delta={config.huber_delta}-sp_weight={config.sp_weight}.png', 
                        dpi=150, bbox_inches='tight')
             plt.close()
             
@@ -200,10 +200,10 @@ def train_teacher():
             plt.plot(epochs_range, val_losses, 'r-', label='Val Loss', linewidth=2)
             plt.xlabel('Epoch')
             plt.ylabel('Loss')
-            plt.title('Teacher Model Training - Loss Curve (Augmentation)')
+            plt.title('Teacher Model Training - Loss Curve (No Augmentation)')
             plt.legend()
             plt.grid(True, alpha=0.3)
-            plt.savefig(f'models/teacher_aug_training_loss-epochs={config.epochs}-batch_size={config.batch_size}-lr={config.max_lr}-huber_delta={config.huber_delta}-sp_weight={config.sp_weight}.png',
+            plt.savefig(f'models/teacher_no_aug_training_loss-epochs={config.epochs}-batch_size={config.batch_size}-lr={config.max_lr}-huber_delta={config.huber_delta}-sp_weight={config.sp_weight}.png',
                        dpi=150, bbox_inches='tight')
             plt.close()
             
